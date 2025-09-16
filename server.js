@@ -211,6 +211,10 @@ bot.on("callback_query", async (ctx) => {
     await ctx.answerCbQuery();
   }
 });
+bot.command("today", async (ctx) => {
+  const chatId = ctx.from.id;
+  await sendDailyMessage(chatId); // отправка текущих задач
+});
 // Запуск бота
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
 
