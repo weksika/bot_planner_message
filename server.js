@@ -150,7 +150,7 @@ async function sendDailyMessage(chatId) {
     userTodos[chatId] = tasksArray;
   }
 
-  const message = `📝 Список дел на сегодня:`;
+  const message = `📝 Список дел на ${curDate}:`;
   try {
     await bot.telegram.sendMessage(chatId, message, getTodoKeyboard(chatId));
   } catch (err) {
