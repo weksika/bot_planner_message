@@ -110,49 +110,51 @@ function func_week_number(date){
 
 
 // Отправка сообщения пользователю
-async function sendDailyMessage(chatId) {
+async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
   let curDate = new Date();
   let wn = func_week_number(curDate);
   let str = editDate(curDate);
-   let charCode;
-    let numstr;
-    if(str.length > 1){
-      charCode = str.charCodeAt(1);  
-      numstr = str[0] + String.fromCharCode(charCode - 1);
-    } else {
-      charCode = str.charCodeAt(0);  
-      numstr = String.fromCharCode(charCode - 1);
-    }
-  const userTasks = {}; // объект для хранения задач
-  const numTasks = 8; // количество задач, которое нужно загрузить
+  let charCode;
+  let numstr;
+  if(str.length > 1){
+    charCode = str.charCodeAt(1);  
+    numstr = str[0] + String.fromCharCode(charCode - 1);
+  } else {
+    charCode = str.charCodeAt(0);  
+    numstr = String.fromCharCode(charCode - 1);
+  }
+
+  const userTasks = {};
+  const numTasks = 8;
 
   for (let i = 1; i <= numTasks; i++) {
-    const taskCell = `${str}${(2 + (10*wn)) + i}`; // текст задачи
-    const checkCell = `${numstr}${(2 + (10*wn)) + i}`; // статус задачи
+    const taskCell = `${str}${(2 + (10*wn)) + i}`;
+    const checkCell = `${numstr}${(2 + (10*wn)) + i}`;
 
     const taskText = await getCellValue(taskCell);
-    if (!taskText) continue; // если значение null или пустое, пропускаем
+    if (!taskText) continue;
 
     const taskCheckRaw = await getCellValue(checkCell);
     const taskDone = taskCheckRaw === true || taskCheckRaw === "TRUE" || taskCheckRaw === "1";
 
-    userTasks[`task${i}`] = {
-      text: taskText,
-      done: taskDone,
-    };
+    userTasks[`task${i}`] = { text: taskText, done: taskDone };
   }
 
-  // Преобразуем объект в массив, только если есть задачи
   const tasksArray = Object.values(userTasks);
-  if (tasksArray.length === 0) return; // нет задач — не отправляем сообщение
-
-  if (!userTodos[chatId]) {
-    userTodos[chatId] = tasksArray;
+  if (tasksArray.length === 0) {
+    if (loadingMessage) await ctx.telegram.editMessageText(chatId, loadingMessage.message_id, null, `📅 Планы на ${dateStr} отсутствуют.`);
+    return;
   }
 
-  const message = `📝 Список дел на ${curDate}:`;
+  if (!userTodos[chatId]) userTodos[chatId] = tasksArray;
+
+  const messageText = `📅 Планы на ${dateStr}:\n`;
   try {
-    await bot.telegram.sendMessage(chatId, message, getTodoKeyboard(chatId));
+    if (loadingMessage) {
+      await bot.telegram.editMessageText(chatId, loadingMessage.message_id, null, messageText, getTodoKeyboard(chatId).reply_markup);
+    } else {
+      await bot.telegram.sendMessage(chatId, messageText, getTodoKeyboard(chatId));
+    }
   } catch (err) {
     console.error("Ошибка при отправке сообщения:", err);
   }
@@ -212,8 +214,29 @@ bot.on("callback_query", async (ctx) => {
   }
 });
 bot.command("today", async (ctx) => {
-  const chatId = ctx.from.id;
-  await sendDailyMessage(chatId); // отправка текущих задач
+  try {
+    // показываем "печатает..." в Telegram
+    await ctx.sendChatAction("typing");
+
+    // отправляем промежуточное сообщение "Загрузка..."
+    const loadingMessage = await ctx.reply("⏳ Загружаю планы...");
+
+    // получаем текущую дату
+    const curDate = new Date();
+    const dateStr = curDate.toLocaleDateString("ru-RU", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // функция отправки задач на сегодня
+    await sendDailyMessage(ctx.chat.id, loadingMessage, dateStr);
+
+  } catch (err) {
+    console.error(err);
+    await ctx.reply("❌ Ошибка при загрузке планов");
+  }
 });
 // Запуск бота
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
