@@ -237,43 +237,25 @@ bot.command("today", async (ctx) => {
 });
 bot.command("habits", async (ctx) => {
   try {
-    // 1. Отправляем временное сообщение
-    const loadingMessage = await ctx.reply("⏳ Загружаю привычки 2...");
-
+    await ctx.reply("⏳ Загружаю привычки...");
+    
     const now = new Date();
     const weekday = now.getDay(); // 0 = вс, 1 = пн ...
     const colMap = ['J','K','L','M','N','O','P']; // пн-вс
 
-    const buttons = [];
-
-    // 2. Получаем привычки и строим кнопки
     for (let i = 0; i < 5; i++) {
       const habitCell = `C${4 + i}`;
       const timeCell = `${colMap[weekday]}${4 + i}`;
-      const checkCell = `Q${4 + i}`; // флажки
+      const checkCell = `Q${4 + i}`;
 
       let habitName = await getCellValue(habitCell);
-      let habitTimeRaw = await getCellValue(timeCell);
+      let habitTime = await getCellValue(timeCell);
       let doneRaw = await getCellValue(checkCell);
 
-      if (!habitName) habitName = `Привычка ${i + 1}`;
-      let habitTime = habitTimeRaw || "—";
-      let done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
-
-      buttons.push([{
-        text: `${done ? "✅" : "☑️"} ${habitName} (${habitTime})`,
-        callback_data: `habit_${checkCell}`
-      }]);
+      console.log(`habit ${i}: name=${habitName}, time=${habitTime}, doneRaw=${doneRaw}`);
     }
 
-    // 3. Редактируем сообщение и вставляем кнопки
-    if (buttons.length) {
-      await bot.telegram.editMessageText(ctx.chat.id, loadingMessage.message_id, undefined, ' ', {
-        reply_markup: { inline_keyboard: buttons }
-      });
-    } else {
-      await bot.telegram.editMessageText(ctx.chat.id, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
-    }
+    await ctx.reply("✅ Проверка завершена. Смотри логи сервера.");
 
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
