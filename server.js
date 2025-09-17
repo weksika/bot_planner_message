@@ -161,22 +161,29 @@ function formatTimeFromSheet(timeValue) {
     hours = Math.floor(totalMinutes / 60);
     minutes = totalMinutes % 60;
   } else if (typeof timeValue === "string") {
-    const match = timeValue.match(/(\d{1,2}):(\d{1,2})/);
-    if (match) {
-      hours = parseInt(match[1], 10);
-      minutes = parseInt(match[2], 10);
+    // проверяем, является ли строка числом
+    if (!isNaN(Number(timeValue))) {
+      const num = Number(timeValue);
+      const totalMinutes = Math.round(num * 24 * 60);
+      hours = Math.floor(totalMinutes / 60);
+      minutes = totalMinutes % 60;
     } else {
-      const date = new Date(timeValue);
-      if (!isNaN(date)) {
-        hours = date.getHours();
-        minutes = date.getMinutes();
+      const match = timeValue.match(/(\d{1,2}):(\d{1,2})/);
+      if (match) {
+        hours = parseInt(match[1], 10);
+        minutes = parseInt(match[2], 10);
+      } else {
+        const date = new Date(timeValue);
+        if (!isNaN(date)) {
+          hours = date.getHours();
+          minutes = date.getMinutes();
+        }
       }
     }
   }
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
-
 async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
