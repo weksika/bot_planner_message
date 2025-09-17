@@ -172,28 +172,55 @@ function formatTimeFromSheet(timeValue) {
   return `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`;
 }
 
+function getColumnName(colNumber) {
+  let name = "";
+  while (colNumber > 0) {
+    colNumber--; // Сдвиг для 0-индекса
+    name = String.fromCharCode(65 + (colNumber % 26)) + name;
+    colNumber = Math.floor(colNumber / 26);
+  }
+  return name;
+}
+
 async function sendMorningHabits(userId) {
   const now = new Date();
-  const dayOfMonth = now.getDate(); // день месяца (1..31)
+  const weekday = now.getDay(); // 0 = вс, 1 = пн ...
+  const dayOfMonth = now.getDate(); // 1..31
+  const colMap = ['J','K','L','M','N','O','P']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
-    const habitCell = `C${4 + i}`; // имя привычки
-    const timeCell = `${['J','K','L','M','N','O','P'][now.getDay()]}${4 + i}`; // время по дню недели
-
-    // Чекбокс на текущий день месяца
-    const firstCheckboxColCode = 'Q'.charCodeAt(0); // Q = 1-й день месяца
-    const checkCol = String.fromCharCode(firstCheckboxColCode + dayOfMonth - 1);
-    const checkCell = `${checkCol}${4 + i}`;
-
+    const habitCell = `C${4 + i}`; // название привычки
+    const timeCell = `${colMap[weekday]}${4 + i}`; // время привычки
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
-    const habitTime = formatTimeFromSheet(habitTimeRaw);
 
+    // формируем корректное время
+    let habitTime = "";
+    if (habitTimeRaw != null && habitTimeRaw !== "") {
+      if (typeof habitTimeRaw === "number") {
+        const totalMinutes = Math.round(habitTimeRaw * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        habitTime = `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`;
+      } else {
+        const match = habitTimeRaw.toString().match(/(\d{1,2}):(\d{1,2})/);
+        if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
+      }
+    }
+
+    // вычисляем ячейку с чекбоксом по дню месяца
+    const checkCol = getColumnName(17 + dayOfMonth - 1); // Q=17-я колонка
+    const checkCell = `${checkCol}${4 + i}`;
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
 
-    habits.push({ name: habitName, time: habitTime, checkCell, done });
+    habits.push({
+      name: habitName,
+      time: habitTime,
+      checkCell,
+      done
+    });
   }
 
   const buttons = habits.map(h => [{
@@ -211,6 +238,7 @@ async function sendMorningHabits(userId) {
     console.error("Ошибка при выводе привычек:", err);
   }
 }
+
 
 
 // --------------------- Команды ---------------------
