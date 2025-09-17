@@ -219,11 +219,8 @@ bot.command("today", async (ctx) => {
 });
 
 // Авторассылка каждый день в 10:00
-cron.schedule("56 15 * * *", () => {
+cron.schedule("07 16 * * *", () => {
   console.log("🕙 Запуск cron для отправки планов", [...users]);
-  users.forEach((id) => sendDailyMessage(id));
-}, { timezone: "Europe/Moscow" });
-export async function sendDailyPlans(chatId) {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -231,8 +228,8 @@ export async function sendDailyPlans(chatId) {
     month: "long",
     day: "numeric",
   });
-  await sendDailyMessage(chatId, null, dateStr);
-}
+  users.forEach((id) => sendDailyMessage(id, null, dateStr));
+}, { timezone: "Europe/Moscow" });
 // Запуск бота
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
 
