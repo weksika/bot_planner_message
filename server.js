@@ -18,7 +18,6 @@ function loadUsers() {
   }
 }
 
-// Хранилище для дел пользователей
 const userTodos = {};
 loadUsers();
 console.log("Загружены пользователи:", [...users]);
@@ -53,11 +52,9 @@ function getTodoKeyboard(userId) {
   const todos = userTodos[userId] || [];
   return {
     reply_markup: {
-      inline_keyboard: [
-        ...todos.map((t, i) => [
-          { text: `${t.done ? "✅" : "☑️"} ${t.text}`, callback_data: `toggle_${i}` },
-        ]),
-      ],
+      inline_keyboard: todos.map((t, i) => [
+        { text: `${t.done ? "✅" : "☑️"} ${t.text}`, callback_data: `toggle_${i}` },
+      ]),
     },
   };
 }
@@ -151,80 +148,64 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 // --------------------- Привычки ---------------------
 function formatTimeFromSheet(timeValue) {
   if (timeValue == null || timeValue === "") return "";
-
   let hours = 0;
   let minutes = 0;
 
   if (typeof timeValue === "number") {
-    // Google Sheets хранит время как дробь дня
     const totalMinutes = Math.round(timeValue * 24 * 60);
     hours = Math.floor(totalMinutes / 60);
     minutes = totalMinutes % 60;
   } else if (typeof timeValue === "string") {
-    // проверяем, является ли строка числом
-    if (!isNaN(Number(timeValue))) {
-      const num = Number(timeValue);
-      const totalMinutes = Math.round(num * 24 * 60);
-      hours = Math.floor(totalMinutes / 60);
-      minutes = totalMinutes % 60;
+    const match = timeValue.match(/(\d{1,2}):(\d{1,2})/);
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
     } else {
-      const match = timeValue.match(/(\d{1,2}):(\d{1,2})/);
-      if (match) {
-        hours = parseInt(match[1], 10);
-        minutes = parseInt(match[2], 10);
-      } else {
-        const date = new Date(timeValue);
-        if (!isNaN(date)) {
-          hours = date.getHours();
-          minutes = date.getMinutes();
-        }
+      const date = new Date(timeValue);
+      if (!isNaN(date)) {
+        hours = date.getHours();
+        minutes = date.getMinutes();
       }
     }
   }
 
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  return `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`;
 }
+
 async function sendMorningHabits(userId) {
   const now = new Date();
+  const dayOfMonth = now.getDate();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
-  const colMap = ['J','K','L','M','N','O','P']; // пн-вс
-  const colIndex = weekday === 0 ? 6 : weekday - 1; // воскресенье → 6, понедельник → 0
-  const column = colMap[colIndex];
-
   const habits = [];
+
+  const timeCols = ['J','K','L','M','N','O','P']; // время по дням недели
+  const firstDayColCode = 'E'.charCodeAt(0); // колонка для 1 числа месяца (чекбоксы)
 
   for (let i = 0; i < 5; i++) {
     const habitCell = `C${4 + i}`;
-    const timeCell = `${column}${4 + i}`;
-    const checkCell = `Q${4 + i}`;
+    const timeCell = `${timeCols[weekday === 0 ? 6 : weekday - 1]}${4 + i}`;
+    const checkCol = String.fromCharCode(firstDayColCode + dayOfMonth - 1);
+    const checkCell = `${checkCol}${4 + i}`;
 
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
-    const habitTime = formatTimeFromSheet(habitTimeRaw); // функция для правильного форматирования времени
+    const habitTime = formatTimeFromSheet(habitTimeRaw);
 
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
 
-    habits.push({
-      name: habitName,
-      time: habitTime,
-      checkCell: checkCell,
-      done: done
-    });
+    habits.push({ name: habitName, time: habitTime, checkCell, done });
   }
 
-  // Формируем кнопки
-  const buttons = habits.map(h => [ {
+  const buttons = habits.map(h => [{
     text: `${h.done ? "✅" : "☑️"} ${h.name}${h.time ? ` (${h.time})` : ""}`,
     callback_data: `habit_${h.checkCell}`
-  } ]);
+  }]);
 
   const textToSend = buttons.length ? "🌞 Утренние привычки:" : "Нет привычек на сегодня.";
 
   try {
-    await bot.telegram.sendMessage(userId, textToSend, {
-      reply_markup: { inline_keyboard: buttons }
-    });
+    await bot.telegram.sendMessage(userId, textToSend, { reply_markup: { inline_keyboard: buttons } });
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
@@ -247,11 +228,11 @@ bot.command("today", async ctx => {
     await ctx.sendChatAction("typing");
     const loadingMessage = await ctx.reply("⏳ Загружаю планы...");
     const curDate = new Date();
-    const dateStr = curDate.toLocaleDateString("ru-RU", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
     await sendDailyMessage(ctx.chat.id, loadingMessage, dateStr);
   } catch (err) {
     console.error(err);
-    await ctx.reply("❌ Ошибка при загрузке планов");
+    ctx.reply("❌ Ошибка при загрузке планов");
   }
 });
 
@@ -261,7 +242,7 @@ bot.command("habits", async ctx => {
     await sendMorningHabits(ctx.chat.id);
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
-    await ctx.reply("❌ Ошибка при загрузке привычек");
+    ctx.reply("❌ Ошибка при загрузке привычек");
   }
 });
 
@@ -290,7 +271,7 @@ bot.on("callback_query", async ctx => {
 // --------------------- Cron ---------------------
 cron.schedule("0 09 * * *", () => {
   const curDate = new Date();
-  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
   users.forEach(id => sendDailyMessage(id, null, dateStr));
 }, { timezone: "Europe/Moscow" });
 
@@ -300,4 +281,3 @@ cron.schedule("50 08 * * *", () => {
 
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
-
