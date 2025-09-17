@@ -150,16 +150,17 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 
 // --------------------- Привычки ---------------------
 function formatTimeFromSheet(timeValue) {
-  if (!timeValue) return "";
+  if (timeValue == null || timeValue === "") return "";
 
   let hours = 0;
   let minutes = 0;
 
-  if (typeof timeValue === "number") { // Excel формат
+  if (typeof timeValue === "number") {
+    // Google Sheets хранит время как дробь дня
     const totalMinutes = Math.round(timeValue * 24 * 60);
     hours = Math.floor(totalMinutes / 60);
     minutes = totalMinutes % 60;
-  } else if (typeof timeValue === "string") { // Строковый формат "HH:MM"
+  } else if (typeof timeValue === "string") {
     const match = timeValue.match(/(\d{1,2}):(\d{1,2})/);
     if (match) {
       hours = parseInt(match[1], 10);
@@ -167,13 +168,13 @@ function formatTimeFromSheet(timeValue) {
     } else {
       const date = new Date(timeValue);
       if (!isNaN(date)) {
-        hours = date.getUTCHours();
-        minutes = date.getUTCMinutes();
+        hours = date.getHours();
+        minutes = date.getMinutes();
       }
     }
   }
 
-  return `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}`;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 async function sendMorningHabits(userId) {
@@ -190,23 +191,32 @@ async function sendMorningHabits(userId) {
 
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
+
     const habitTime = formatTimeFromSheet(habitTimeRaw);
 
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
 
-    habits.push({ name: habitName, time: habitTime, checkCell, done });
+    habits.push({
+      name: habitName,
+      time: habitTime,
+      checkCell: checkCell,
+      done: done
+    });
   }
 
-  const buttons = habits.map(h => [{
+  // Формируем кнопки
+  const buttons = habits.map(h => [ {
     text: `${h.done ? "✅" : "☑️"} ${h.name}${h.time ? ` (${h.time})` : ""}`,
     callback_data: `habit_${h.checkCell}`
-  }]);
+  } ]);
 
   const textToSend = buttons.length ? "🌞 Утренние привычки:" : "Нет привычек на сегодня.";
 
   try {
-    await bot.telegram.sendMessage(userId, textToSend, { reply_markup: { inline_keyboard: buttons } });
+    await bot.telegram.sendMessage(userId, textToSend, {
+      reply_markup: { inline_keyboard: buttons }
+    });
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
