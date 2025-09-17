@@ -251,6 +251,15 @@ bot.command("today", async (ctx) => {
     await ctx.reply("❌ Ошибка при загрузке планов");
   }
 });
+bot.command("habits", async (ctx) => {
+  try {
+    await ctx.sendChatAction("typing");
+    await sendMorningHabits(ctx.chat.id);
+  } catch (err) {
+    console.error("Ошибка при отправке привычек:", err);
+    await ctx.reply("❌ Ошибка при загрузке привычек");
+  }
+});
 
 // --------------------- Callback ---------------------
 bot.on("callback_query", async (ctx) => {
