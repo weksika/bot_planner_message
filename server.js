@@ -6,10 +6,13 @@ import cron from "node-cron";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
+const userTodos = {};   // старые планы
+const userHabits = {};  // новые привычки
 
-function saveUsers() {
-  fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
-}
+// ======================
+// Пользователи
+// ======================
+function saveUsers() { fs.writeFileSync("users.json", JSON.stringify([...users], null, 2)); }
 
 function loadUsers() {
   if (fs.existsSync("users.json")) {
@@ -17,12 +20,13 @@ function loadUsers() {
     data.forEach(id => users.add(id));
   }
 }
-
-const userTodos = {};
 loadUsers();
 console.log("Загружены пользователи:", [...users]);
 
-async function getCellValue(cell) {
+// ======================
+// Google Sheets
+// ======================
+export async function getCellValue(cell) {
   try {
     const url = `${process.env.WEBAPP_URL}?cell=${cell}`;
     const res = await fetch(url);
@@ -34,7 +38,7 @@ async function getCellValue(cell) {
   }
 }
 
-async function setCellValue(cell, value) {
+export async function setCellValue(cell, value) {
   try {
     const url = `${process.env.WEBAPP_URL}?cell=${cell}&value=${value}`;
     const res = await fetch(url);
@@ -46,76 +50,216 @@ async function setCellValue(cell, value) {
   }
 }
 
-// Получение привычек для дня
-async function getHabitsForToday() {
-  const weekday = new Date().getDay(); // 0 - вс, 1 - пн
-  const dayColMap = ["P","J","K","L","M","N","O"]; // 0=Вс->P, 1=Пн->J
-  const dayCol = dayColMap[weekday];
+// ======================
+// Планы (твоя старая логика)
+// ======================
+function getTodoKeyboard(userId) {
+  const todos = userTodos[userId] || [];
+  return {
+    reply_markup: {
+      inline_keyboard: todos.map((t, i) => [{ text: `${t.done ? "✅" : "☑️"} ${t.text}`, callback_data: `toggle_${i}` }])
+    }
+  };
+}
 
-  const habits = [];
-  for (let i = 0; i < 5; i++) { // 5 привычек
-    const nameCell = `C${4 + i}`; // C4:I4, берем C
-    const timeCell = `${String.fromCharCode(dayCol.charCodeAt(0))}${4 + i}`; // J4, K4...
-    const habitName = await getCellValue(nameCell);
-    const habitTime = await getCellValue(dayCol + (4 + i));
-    habits.push({ name: habitName, time: habitTime, row: 4 + i });
+function editDate(date) {
+  const weekday = date.getDay();
+  switch (weekday) {
+    case 1: return 'D';
+    case 2: return 'J';
+    case 3: return 'P';
+    case 4: return 'V';
+    case 5: return 'AB';
+    case 6: return 'AH';
+    case 0: return 'AN';
+    default: return 'D';
   }
-  return habits;
 }
 
-async function sendMorningHabits(chatId) {
-  const habits = await getHabitsForToday();
-  let text = "☀️ Привычки на сегодня:\n";
-  habits.forEach(h => {
-    text += `- ${h.name} в ${h.time || "не указано"}\n`;
-  });
-  await bot.telegram.sendMessage(chatId, text);
+function func_week_number(date) {
+  const dayOfMonth = date.getDate();
+  let weekday = date.getDay();
+  let week_number = 1;
+  let vskr;
+  if(dayOfMonth - weekday > 0 && weekday != 0){
+    vskr = dayOfMonth - weekday;
+    week_number += 1;
+  } else {
+    vskr = dayOfMonth + weekday;
+  }
+  for(let i = vskr; i > 7; i -= 7){
+    week_number++;
+  }
+  return week_number;
 }
 
-// Авторассылка утром всем
-cron.schedule("0 8 * * *", () => {
-  console.log("☀️ Отправка утренних привычек");
-  users.forEach(id => sendMorningHabits(id));
+async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
+  let curDate = new Date();
+  let wn = func_week_number(curDate);
+  let str = editDate(curDate);
+
+  let checkCol;
+  if (str.length === 1) {
+    checkCol = String.fromCharCode(str.charCodeAt(0) - 1);
+  } else {
+    checkCol = str[0] + String.fromCharCode(str.charCodeAt(1) - 1);
+  }
+
+  const userTasks = {};
+  const numTasks = 8;
+
+  for (let i = 1; i <= numTasks; i++) {
+    const taskRow = (2 + (10 * wn)) + i;
+    const taskCell = `${str}${taskRow}`;
+    const checkCell = `${checkCol}${taskRow}`;
+
+    const taskText = await getCellValue(taskCell);
+    if (!taskText) continue;
+
+    const taskCheckRaw = await getCellValue(checkCell);
+    const taskDone = taskCheckRaw === true || taskCheckRaw === "TRUE" || taskCheckRaw === "1";
+
+    userTasks[`task${i}`] = { text: taskText, done: taskDone, cell: checkCell };
+  }
+
+  const tasksArray = Object.values(userTasks);
+
+  if (tasksArray.length === 0) {
+    if (loadingMessage) {
+      await bot.telegram.editMessageText(chatId, loadingMessage.message_id, undefined, `📅 Планы на ${dateStr} отсутствуют.`);
+    }
+    return;
+  }
+
+  if (!userTodos[chatId]) userTodos[chatId] = tasksArray;
+
+  const messageText = `📅 Планы на ${dateStr}:`;
+
+  try {
+    if (loadingMessage) {
+      await bot.telegram.editMessageText(chatId, loadingMessage.message_id, undefined, messageText, { reply_markup: getTodoKeyboard(chatId).reply_markup });
+    } else {
+      await bot.telegram.sendMessage(chatId, messageText, getTodoKeyboard(chatId));
+    }
+  } catch (err) {
+    console.error("Ошибка при отправке сообщения:", err);
+  }
+}
+
+// ======================
+// Привычки (новый функционал)
+// ======================
+function getHabitsKeyboard(userId) {
+  const habits = userHabits[userId] || [];
+  return {
+    reply_markup: {
+      inline_keyboard: habits.map((h, i) => [{ text: `${h.done ? "✅" : "☑️"} ${h.name}`, callback_data: `habit_toggle_${i}` }])
+    }
+  };
+}
+
+async function loadHabitsForUser(userId) {
+  const weekday = new Date().getDay(); // 0-вс, 1-пн, ...
+  const habitsList = [];
+  for (let i = 4; i <= 8; i++) { // строки привычек 4-8
+    const habitNameCell = `C${i}:I${i}`;
+    const habitName = await getCellValue(`C${i}`); // берем только C как название
+    if (!habitName) continue;
+
+    const dayColumn = String.fromCharCode(74 + weekday - 1); // J=74, K=75 ...
+    const habitTime = await getCellValue(`${dayColumn}${i}`); 
+    habitsList.push({ name: habitName, time: habitTime, done: false, row: i });
+  }
+  userHabits[userId] = habitsList;
+}
+
+async function sendMorningHabits(userId) {
+  await loadHabitsForUser(userId);
+  const habits = userHabits[userId];
+  if (!habits || habits.length === 0) return;
+
+  const message = "🌞 Утренние привычки:\n" + habits.map(h => `- ${h.name} (${h.time || "время не задано"})`).join("\n");
+  await bot.telegram.sendMessage(userId, message, getHabitsKeyboard(userId));
+}
+
+async function sendHabitReminder(userId, habit) {
+  await bot.telegram.sendMessage(userId, `⏰ Через 10 минут: ${habit.name}`, getHabitsKeyboard(userId));
+}
+
+// проверка привычек каждую минуту
+setInterval(async () => {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  for (const userId of users) {
+    if (!userHabits[userId]) await loadHabitsForUser(userId);
+    const habits = userHabits[userId];
+    if (!habits) continue;
+
+    for (const habit of habits) {
+      if (!habit.time) continue;
+      const [h, m] = habit.time.split(":").map(Number);
+      const habitMinutes = h * 60 + m;
+      if (habitMinutes - 10 === nowMinutes) {
+        await sendHabitReminder(userId, habit);
+      }
+    }
+  }
+}, 60000);
+
+// ======================
+// Команды бота
+// ======================
+bot.start((ctx) => { users.add(ctx.from.id); saveUsers(); ctx.reply("✅ Ты подписан на ежедневные уведомления!"); });
+bot.command("id", (ctx) => { ctx.reply(`Твой Telegram ID: ${ctx.from.id}`); users.add(ctx.from.id); });
+bot.command("today", async (ctx) => {
+  try {
+    await ctx.sendChatAction("typing");
+    const loadingMessage = await ctx.reply("⏳ Загружаю планы...");
+    const curDate = new Date();
+    const dateStr = curDate.toLocaleDateString("ru-RU", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    await sendDailyMessage(ctx.chat.id, loadingMessage, dateStr);
+  } catch (err) {
+    console.error(err);
+    await ctx.reply("❌ Ошибка при загрузке планов");
+  }
+});
+bot.command("habits", async (ctx) => { await sendMorningHabits(ctx.from.id); });
+
+bot.on("callback_query", async (ctx) => {
+  const chatId = ctx.from.id;
+  const data = ctx.callbackQuery.data;
+
+  // план
+  if (data.startsWith("toggle_")) {
+    const index = parseInt(data.split("_")[1]);
+    const todo = userTodos[chatId][index];
+    todo.done = !todo.done;
+    await setCellValue(todo.cell, todo.done ? "TRUE" : "FALSE");
+    await ctx.editMessageReplyMarkup(getTodoKeyboard(chatId).reply_markup);
+    await ctx.answerCbQuery();
+  }
+
+  // привычка
+  if (data.startsWith("habit_toggle_")) {
+    const index = parseInt(data.split("_")[2]);
+    const habit = userHabits[chatId][index];
+    habit.done = !habit.done;
+    await ctx.editMessageReplyMarkup(getHabitsKeyboard(chatId).reply_markup);
+    await ctx.answerCbQuery();
+  }
+});
+
+// ======================
+// Авторассылка планов
+// ======================
+cron.schedule("0 09 * * *", () => {
+  const curDate = new Date();
+  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  users.forEach((id) => sendDailyMessage(id, null, dateStr));
 }, { timezone: "Europe/Moscow" });
 
-// Отправка уведомления за 10 минут до времени привычки
-async function scheduleHabitReminders() {
-  const habits = await getHabitsForToday();
-  habits.forEach(h => {
-    if (!h.time) return;
-    const [hour, minute] = h.time.split(":").map(Number);
-    const date = new Date();
-    date.setHours(hour);
-    date.setMinutes(minute - 10); // за 10 минут
-    date.setSeconds(0);
-
-    const now = new Date();
-    const delay = date.getTime() - now.getTime();
-    if (delay > 0) {
-      setTimeout(() => {
-        users.forEach(id => {
-          bot.telegram.sendMessage(id, `⏰ Напоминание: ${h.name} через 10 минут`);
-        });
-      }, delay);
-    }
-  });
-}
-
-// Запускаем проверку напоминаний каждые 10 минут
-cron.schedule("*/10 * * * *", scheduleHabitReminders, { timezone: "Europe/Moscow" });
-
-// Команды
-bot.start(ctx => {
-  users.add(ctx.from.id);
-  saveUsers();
-  ctx.reply("✅ Ты подписан на уведомления о привычках!");
-});
-
-bot.command("habits", async ctx => {
-  await sendMorningHabits(ctx.chat.id);
-});
-
+// ======================
 // Запуск бота
+// ======================
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
-
-
