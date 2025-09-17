@@ -171,9 +171,6 @@ function formatTimeFromSheet(timeStr) {
 }
 
 async function sendMorningHabits(userId) {
-  // Временное сообщение для индикации загрузки
-  const loadingMessage = await bot.telegram.sendMessage(userId, "⏳ Загружаю привычки...");
-
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const colMap = ['J','K','L','M','N','O','P']; // пн-вс
@@ -203,8 +200,6 @@ async function sendMorningHabits(userId) {
       checkCell: checkCell,
       done: done
     });
-
-    console.log(`habit ${i}: name=${habitName}, time=${habitTime}, done=${done}`);
   }
 
   // Кнопки
@@ -213,16 +208,12 @@ async function sendMorningHabits(userId) {
     callback_data: `habit_${h.checkCell}`
   }]);
 
-  // Если кнопки есть, редактируем сообщение
-  const textToSend = "🌞 Утренние привычки:";
+  const textToSend = buttons.length ? "🌞 Утренние привычки:" : "Нет привычек на сегодня.";
+
   try {
-    if (buttons.length) {
-      await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, textToSend, {
-        reply_markup: { inline_keyboard: buttons }
-      });
-    } else {
-      await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
-    }
+    await bot.telegram.sendMessage(userId, textToSend, {
+      reply_markup: { inline_keyboard: buttons }
+    });
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
