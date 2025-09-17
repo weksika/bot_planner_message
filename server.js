@@ -188,18 +188,19 @@ async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const colMap = ['J','K','L','M','N','O','P']; // пн-вс
+  const colIndex = weekday === 0 ? 6 : weekday - 1; // воскресенье → 6, понедельник → 0
+  const column = colMap[colIndex];
 
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
     const habitCell = `C${4 + i}`;
-    const timeCell = `${colMap[weekday]}${4 + i}`;
+    const timeCell = `${column}${4 + i}`;
     const checkCell = `Q${4 + i}`;
 
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
-
-    const habitTime = formatTimeFromSheet(habitTimeRaw);
+    const habitTime = formatTimeFromSheet(habitTimeRaw); // функция для правильного форматирования времени
 
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
