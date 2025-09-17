@@ -181,27 +181,30 @@ async function sendMorningHabits(userId) {
   for (let i = 0; i < 5; i++) {
     const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`);
-    let habitTime = habitTimeRaw ? habitTimeRaw : "";
+    let habitTime = "";
+    if (habitTimeRaw) {
+      const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
+      if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
+    }
+
     habits.push({
       name: habitName,
       time: habitTime,
       checkCell: `Q${4 + i}`
     });
+
+    console.log(`habit ${i}: name=${habitName}, time=${habitTime}, checkCell=Q${4 + i}`);
   }
 
-  const buttons = [];
-  for (const h of habits) {
-    const doneRaw = await getCellValue(h.checkCell);
-    const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
-    const timeText = h.time ? ` (${h.time})` : "";
-    buttons.push([{
-      text: `${done ? "✅" : "☑️"} ${h.name}${timeText}`,
+  const buttons = habits.map(h => {
+    return [{
+      text: `${h.time ? `(${h.time}) ` : ""}${h.name}`,
       callback_data: `habit_${h.checkCell}`
-    }]);
-  }
+    }];
+  });
 
-  // Используем нормальный текст вместо пустого
   const textToSend = "🌞 Утренние привычки:";
+
   if (buttons.length) {
     await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, textToSend, {
       reply_markup: { inline_keyboard: buttons }
