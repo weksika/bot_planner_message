@@ -238,7 +238,7 @@ bot.command("today", async (ctx) => {
 bot.command("habits", async (ctx) => {
   try {
     // 1. Отправляем временное сообщение
-    const loadingMessage = await ctx.reply("⏳ Загружаю привычки...");
+    const loadingMessage = await ctx.reply("⏳ Загружаю привычки 2...");
 
     const now = new Date();
     const weekday = now.getDay(); // 0 = вс, 1 = пн ...
