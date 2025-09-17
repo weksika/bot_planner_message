@@ -170,41 +170,36 @@ function formatTimeFromSheet(timeStr) {
   return `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
 }
 
-async function sendMorningHabits(userId) {
+abot.command("habits", async (ctx) => {
   try {
-    await bot.telegram.sendChatAction(userId, "typing");
+    await bot.telegram.sendChatAction(ctx.chat.id, "typing");
 
     const now = new Date();
     const weekday = now.getDay(); // 0 = вс, 1 = пн ...
 
     const colMap = ['J','K','L','M','N','O','P']; // пн-вс
-    const habits = [];
+    let text = "🌞 Утренние привычки:\n";
 
     for (let i = 0; i < 5; i++) {
-      const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
-      const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`) || "";
-      
-      let habitTime = "";
-      const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
-      if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
+      const habitCell = `C${4 + i}`;
+      const timeCell = `${colMap[weekday]}${4 + i}`;
 
-      habits.push({ name: habitName, time: habitTime });
+      let habitName = await getCellValue(habitCell);
+      let habitTimeRaw = await getCellValue(timeCell);
+
+      if (!habitName) habitName = `Привычка ${i+1}`;
+      let habitTime = habitTimeRaw || "—";
+
+      text += `- ${habitName} (${habitTime})\n`;
     }
 
-    const buttons = habits.map(h => [{
-      text: `${h.name}${h.time ? ` (${h.time})` : ""}`,
-      callback_data: "dummy" // пока просто заглушка
-    }]);
-
-    await bot.telegram.sendMessage(userId, "🌞 Утренние привычки:", {
-      reply_markup: { inline_keyboard: buttons }
-    });
-
+    await ctx.reply(text);
   } catch (err) {
-    console.error("Ошибка при отправке привычек:", err);
-    await bot.telegram.sendMessage(userId, "❌ Ошибка при загрузке привычек");
+    console.error("Ошибка при выводе привычек:", err);
+    await ctx.reply("❌ Ошибка при загрузке привычек");
   }
-}
+});
+
 
 // --------------------- Команды ---------------------
 bot.start((ctx) => {
