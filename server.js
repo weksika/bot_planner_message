@@ -249,26 +249,8 @@ bot.command("today", async (ctx) => {
 });
 bot.command("habits", async (ctx) => {
   try {
-    await ctx.reply("⏳ Загружаю привычки...");
-    
-    const now = new Date();
-    const weekday = now.getDay(); // 0 = вс, 1 = пн ...
-    const colMap = ['J','K','L','M','N','O','P']; // пн-вс
-
-    for (let i = 0; i < 5; i++) {
-      const habitCell = `C${4 + i}`;
-      const timeCell = `${colMap[weekday]}${4 + i}`;
-      const checkCell = `Q${4 + i}`;
-
-      let habitName = await getCellValue(habitCell);
-      let habitTime = await getCellValue(timeCell);
-      let doneRaw = await getCellValue(checkCell);
-
-      console.log(`habit ${i}: name=${habitName}, time=${habitTime}, doneRaw=${doneRaw}`);
-    }
-
-    await ctx.reply("✅ Проверка завершена. Смотри логи сервера.");
-
+    await ctx.sendChatAction("typing");
+    await sendMorningHabits(ctx.chat.id);
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
     await ctx.reply("❌ Ошибка при загрузке привычек");
