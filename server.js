@@ -176,17 +176,24 @@ async function sendMorningHabits(userId) {
   const weekday = now.getDay();
   const habits = [];
 
-  // Получаем привычки
   for (let i = 0; i < 5; i++) { // 5 привычек
-    const habitName = await getCellValue(`C${4 + i}:I${4 + i}`) || `Привычка ${i+1}`;
+    const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
 
     // Время по дню недели
     const colMap = ['J','K','L','M','N','O','P']; // пн-вс
-    const habitTime = await getCellValue(`${colMap[weekday]}${4 + i}`);
+    const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`);
+
+    let habitTime = "";
+    if (habitTimeRaw) {
+      // habitTimeRaw может быть "5:29" или "05:29", преобразуем в HH:MM
+      const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
+      if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
+    }
+
     habits.push({
       name: habitName,
       time: habitTime,
-      checkCell: `Q${4 + i}`, // старт флажков
+      checkCell: `Q${4 + i}` // старт флажков
     });
   }
 
@@ -195,9 +202,9 @@ async function sendMorningHabits(userId) {
   for (const h of habits) {
     const doneRaw = await getCellValue(h.checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
-    const timeText = h.time ? `(${formatTimeFromSheet(h.time)})` : "";
+    const timeText = h.time ? ` (${h.time})` : "";
     buttons.push([{
-      text: `${done ? "✅" : "☑️"} ${h.name} ${timeText}`,
+      text: `${done ? "✅" : "☑️"} ${h.name}${timeText}`,
       callback_data: `habit_${h.checkCell}`
     }]);
   }
@@ -206,6 +213,7 @@ async function sendMorningHabits(userId) {
     await bot.telegram.sendMessage(userId, ' ', { reply_markup: { inline_keyboard: buttons } });
   }
 }
+
 
 // --------------------- Команды ---------------------
 bot.start((ctx) => {
