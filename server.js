@@ -174,17 +174,16 @@ function formatTimeFromSheet(timeValue) {
 
 async function sendMorningHabits(userId) {
   const now = new Date();
-  const dayOfMonth = now.getDate();
-  const weekday = now.getDay(); // 0 = вс, 1 = пн ...
+  const dayOfMonth = now.getDate(); // день месяца (1..31)
   const habits = [];
 
-  const timeCols = ['J','K','L','M','N','O','P']; // время по дням недели
-  const firstDayColCode = 'Q'.charCodeAt(0); // колонка для 1 числа месяца (чекбоксы)
-
   for (let i = 0; i < 5; i++) {
-    const habitCell = `C${4 + i}`;
-    const timeCell = `${timeCols[weekday === 0 ? 6 : weekday - 1]}${4 + i}`;
-    const checkCol = String.fromCharCode(firstDayColCode + dayOfMonth - 1);
+    const habitCell = `C${4 + i}`; // имя привычки
+    const timeCell = `${['J','K','L','M','N','O','P'][now.getDay()]}${4 + i}`; // время по дню недели
+
+    // Чекбокс на текущий день месяца
+    const firstCheckboxColCode = 'Q'.charCodeAt(0); // Q = 1-й день месяца
+    const checkCol = String.fromCharCode(firstCheckboxColCode + dayOfMonth - 1);
     const checkCell = `${checkCol}${4 + i}`;
 
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
@@ -205,11 +204,14 @@ async function sendMorningHabits(userId) {
   const textToSend = buttons.length ? "🌞 Утренние привычки:" : "Нет привычек на сегодня.";
 
   try {
-    await bot.telegram.sendMessage(userId, textToSend, { reply_markup: { inline_keyboard: buttons } });
+    await bot.telegram.sendMessage(userId, textToSend, {
+      reply_markup: { inline_keyboard: buttons }
+    });
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
 }
+
 
 // --------------------- Команды ---------------------
 bot.start(ctx => {
