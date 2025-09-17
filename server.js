@@ -170,36 +170,41 @@ function formatTimeFromSheet(timeStr) {
   return `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
 }
 
-abot.command("habits", async (ctx) => {
+async function sendMorningHabits(userId) {
   try {
-    await bot.telegram.sendChatAction(ctx.chat.id, "typing");
+    await bot.telegram.sendChatAction(userId, "typing");
 
     const now = new Date();
     const weekday = now.getDay(); // 0 = вс, 1 = пн ...
 
     const colMap = ['J','K','L','M','N','O','P']; // пн-вс
-    let text = "🌞 Утренние привычки:\n";
+    const habits = [];
 
     for (let i = 0; i < 5; i++) {
-      const habitCell = `C${4 + i}`;
-      const timeCell = `${colMap[weekday]}${4 + i}`;
+      const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
+      const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`) || "";
+      
+      let habitTime = "";
+      const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
+      if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
 
-      let habitName = await getCellValue(habitCell);
-      let habitTimeRaw = await getCellValue(timeCell);
-
-      if (!habitName) habitName = `Привычка ${i+1}`;
-      let habitTime = habitTimeRaw || "—";
-
-      text += `- ${habitName} (${habitTime})\n`;
+      habits.push({ name: habitName, time: habitTime });
     }
 
-    await ctx.reply(text);
-  } catch (err) {
-    console.error("Ошибка при выводе привычек:", err);
-    await ctx.reply("❌ Ошибка при загрузке привычек");
-  }
-});
+    const buttons = habits.map(h => [{
+      text: `${h.name}${h.time ? ` (${h.time})` : ""}`,
+      callback_data: "dummy" // пока просто заглушка
+    }]);
 
+    await bot.telegram.sendMessage(userId, "🌞 Утренние привычки:", {
+      reply_markup: { inline_keyboard: buttons }
+    });
+
+  } catch (err) {
+    console.error("Ошибка при отправке привычек:", err);
+    await bot.telegram.sendMessage(userId, "❌ Ошибка при загрузке привычек");
+  }
+}
 
 // --------------------- Команды ---------------------
 bot.start((ctx) => {
@@ -230,15 +235,40 @@ bot.command("today", async (ctx) => {
     await ctx.reply("❌ Ошибка при загрузке планов");
   }
 });
-
 bot.command("habits", async (ctx) => {
   try {
-    await sendMorningHabits(ctx.chat.id);
+    // Шаг 1: отправляем временное сообщение с индикатором загрузки
+    const loadingMessage = await ctx.reply("⏳ Загружаю привычки...");
+
+    const now = new Date();
+    const weekday = now.getDay(); // 0 = вс, 1 = пн ...
+    const colMap = ['J','K','L','M','N','O','P']; // пн-вс
+
+    let text = "";
+
+    // Шаг 2: получаем данные привычек
+    for (let i = 0; i < 5; i++) {
+      const habitCell = `C${4 + i}`;
+      const timeCell = `${colMap[weekday]}${4 + i}`;
+
+      let habitName = await getCellValue(habitCell);
+      let habitTimeRaw = await getCellValue(timeCell);
+
+      if (!habitName) habitName = `Привычка ${i+1}`;
+      let habitTime = habitTimeRaw || "—";
+
+      text += `- ${habitName} (${habitTime})\n`;
+    }
+
+    // Шаг 3: редактируем сообщение с текстом привычек
+    await bot.telegram.editMessageText(ctx.chat.id, loadingMessage.message_id, undefined, text);
+
   } catch (err) {
-    console.error("Ошибка при отправке привычек:", err);
+    console.error("Ошибка при выводе привычек:", err);
     await ctx.reply("❌ Ошибка при загрузке привычек");
   }
 });
+
 
 // --------------------- Callback ---------------------
 bot.on("callback_query", async (ctx) => {
