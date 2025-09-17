@@ -171,8 +171,10 @@ function formatTimeFromSheet(timeStr) {
 }
 
 async function sendMorningHabits(userId) {
+  // Отправляем временное сообщение
+  const loadingMessage = await bot.telegram.sendMessage(userId, "⏳ Загружаю привычки...");
+
   const now = new Date();
-  const dayOfMonth = now.getDate();
   const weekday = now.getDay();
   const habits = [];
 
@@ -185,7 +187,6 @@ async function sendMorningHabits(userId) {
 
     let habitTime = "";
     if (habitTimeRaw) {
-      // habitTimeRaw может быть "5:29" или "05:29", преобразуем в HH:MM
       const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
       if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
     }
@@ -197,7 +198,7 @@ async function sendMorningHabits(userId) {
     });
   }
 
-  // Сформируем кнопки
+  // Кнопки
   const buttons = [];
   for (const h of habits) {
     const doneRaw = await getCellValue(h.checkCell);
@@ -210,7 +211,13 @@ async function sendMorningHabits(userId) {
   }
 
   if (buttons.length) {
-    await bot.telegram.sendMessage(userId, ' ', { reply_markup: { inline_keyboard: buttons } });
+    // Редактируем сообщение вместо отправки нового
+    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, ' ', {
+      reply_markup: { inline_keyboard: buttons }
+    });
+  } else {
+    // Если привычек нет, редактируем с сообщением об отсутствии
+    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
   }
 }
 
