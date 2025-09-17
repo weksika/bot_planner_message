@@ -222,7 +222,16 @@ bot.command("today", async (ctx) => {
 cron.schedule("0 10 * * *", () => {
   users.forEach((id) => sendDailyMessage(id));
 });
-
+export async function sendDailyPlans(chatId) {
+  const curDate = new Date();
+  const dateStr = curDate.toLocaleDateString("ru-RU", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  await sendDailyMessage(chatId, null, dateStr);
+}
 // Запуск бота
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
 
