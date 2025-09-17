@@ -171,49 +171,62 @@ function formatTimeFromSheet(timeStr) {
 }
 
 async function sendMorningHabits(userId) {
+  // Временное сообщение для индикации загрузки
   const loadingMessage = await bot.telegram.sendMessage(userId, "⏳ Загружаю привычки...");
 
   const now = new Date();
-  const weekday = now.getDay();
+  const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const colMap = ['J','K','L','M','N','O','P']; // пн-вс
+
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
-    const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
-    const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`);
+    const habitCell = `C${4 + i}`;
+    const timeCell = `${colMap[weekday]}${4 + i}`;
+    const checkCell = `Q${4 + i}`;
+
+    const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
+    let habitTimeRaw = await getCellValue(timeCell);
+
     let habitTime = "";
     if (habitTimeRaw) {
       const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
       if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
     }
 
+    const doneRaw = await getCellValue(checkCell);
+    const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
+
     habits.push({
       name: habitName,
       time: habitTime,
-      checkCell: `Q${4 + i}`
+      checkCell: checkCell,
+      done: done
     });
 
-    console.log(`habit ${i}: name=${habitName}, time=${habitTime}, checkCell=Q${4 + i}`);
+    console.log(`habit ${i}: name=${habitName}, time=${habitTime}, done=${done}`);
   }
 
-  const buttons = habits.map(h => {
-    return [{
-      text: `${h.time ? `(${h.time}) ` : ""}${h.name}`,
-      callback_data: `habit_${h.checkCell}`
-    }];
-  });
+  // Кнопки
+  const buttons = habits.map(h => [{
+    text: `${h.done ? "✅" : "☑️"} ${h.name}${h.time ? ` (${h.time})` : ""}`,
+    callback_data: `habit_${h.checkCell}`
+  }]);
 
+  // Если кнопки есть, редактируем сообщение
   const textToSend = "🌞 Утренние привычки:";
-
-  if (buttons.length) {
-    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, textToSend, {
-      reply_markup: { inline_keyboard: buttons }
-    });
-  } else {
-    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
+  try {
+    if (buttons.length) {
+      await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, textToSend, {
+        reply_markup: { inline_keyboard: buttons }
+      });
+    } else {
+      await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
+    }
+  } catch (err) {
+    console.error("Ошибка при выводе привычек:", err);
   }
 }
-
 // --------------------- Команды ---------------------
 bot.start((ctx) => {
   users.add(ctx.from.id);
