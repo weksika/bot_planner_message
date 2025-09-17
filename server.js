@@ -219,7 +219,7 @@ bot.command("today", async (ctx) => {
 });
 
 // Авторассылка каждый день в 10:00
-cron.schedule("20 15 * * *", () => {
+cron.schedule("40 15 * * *", () => {
   console.log("🕙 Запуск cron для отправки планов", [...users]);
   users.forEach((id) => sendDailyMessage(id));
 }, { timezone: "Europe/Moscow" });
