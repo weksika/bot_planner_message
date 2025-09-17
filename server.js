@@ -1,3 +1,4 @@
+import fs from "fs";
 import "dotenv/config";
 import { Telegraf } from "telegraf";
 import fetch from "node-fetch";
@@ -5,10 +6,21 @@ import cron from "node-cron";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
+function saveUsers() {
+  fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
+}
+
+function loadUsers() {
+  if (fs.existsSync("users.json")) {
+    const data = JSON.parse(fs.readFileSync("users.json"));
+    data.forEach(id => users.add(id));
+  }
+}
 
 // Хранилище для дел пользователей
 const userTodos = {};
-
+loadUsers();
+console.log("Загружены пользователи:", [...users]);
 // Получение значения ячейки
 export async function getCellValue(cell) {
   try {
@@ -157,8 +169,9 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 
 // Команды
 bot.start((ctx) => {
-  ctx.reply("Привет! Я буду отправлять ежедневные уведомления.");
   users.add(ctx.from.id);
+  saveUsers(); // сохраняем в файл
+  ctx.reply("✅ Ты подписан на ежедневные уведомления!");
 });
 
 bot.command("id", (ctx) => {
