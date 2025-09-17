@@ -165,10 +165,10 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 // --------------------- Привычки ---------------------
 function formatTimeFromSheet(timeStr) {
   if (!timeStr) return "";
-  const match = timeStr.match(/(\d{1,2}):(\d{1,2})/);
-  if (!match) return "";
-  const hours = match[1].padStart(2, "0");
-  const minutes = match[2].padStart(2, "0");
+  const date = new Date(timeStr);
+  if (isNaN(date)) return "";
+  const hours = date.getUTCHours().toString().padStart(2, "0");
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 
