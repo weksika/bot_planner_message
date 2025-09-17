@@ -179,7 +179,7 @@ async function sendMorningHabits(userId) {
   const habits = [];
 
   const timeCols = ['J','K','L','M','N','O','P']; // время по дням недели
-  const firstDayColCode = 'E'.charCodeAt(0); // колонка для 1 числа месяца (чекбоксы)
+  const firstDayColCode = 'Q'.charCodeAt(0); // колонка для 1 числа месяца (чекбоксы)
 
   for (let i = 0; i < 5; i++) {
     const habitCell = `C${4 + i}`;
