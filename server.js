@@ -185,7 +185,7 @@ async function sendMorningHabits(userId) {
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     let habitTimeRaw = await getCellValue(timeCell);
 
-    let habitTime = "";
+    let habitTime = formatTimeFromSheet(habitTimeRaw);
     if (habitTimeRaw) {
       const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
       if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
