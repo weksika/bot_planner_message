@@ -6,6 +6,7 @@ import cron from "node-cron";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
+
 function saveUsers() {
   fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
 }
@@ -27,7 +28,7 @@ export async function getCellValue(cell) {
   try {
     const url = `${process.env.WEBAPP_URL}?cell=${cell}`;
     const res = await fetch(url);
-    const data = await res.json(); // { value: "текущее значение ячейки" }
+    const data = await res.json();
     return data.value;
   } catch (err) {
     console.error("Ошибка при получении данных из Google Sheets:", err);
@@ -164,41 +165,31 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 // --------------------- Привычки ---------------------
 function formatTimeFromSheet(timeStr) {
   if (!timeStr) return "";
-  const date = new Date(`1970-01-01T${timeStr}Z`);
-  const hours = date.getUTCHours().toString().padStart(2, "0");
-  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const match = timeStr.match(/(\d{1,2}):(\d{1,2})/);
+  if (!match) return "";
+  return `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
 }
 
 async function sendMorningHabits(userId) {
-  // Отправляем временное сообщение
   const loadingMessage = await bot.telegram.sendMessage(userId, "⏳ Загружаю привычки...");
 
   const now = new Date();
   const weekday = now.getDay();
   const habits = [];
 
-  for (let i = 0; i < 5; i++) { // 5 привычек
+  for (let i = 0; i < 5; i++) { 
     const habitName = await getCellValue(`C${4 + i}`) || `Привычка ${i+1}`;
-
-    // Время по дню недели
     const colMap = ['J','K','L','M','N','O','P']; // пн-вс
     const habitTimeRaw = await getCellValue(`${colMap[weekday]}${4 + i}`);
-
-    let habitTime = "";
-    if (habitTimeRaw) {
-      const match = habitTimeRaw.match(/(\d{1,2}):(\d{1,2})/);
-      if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
-    }
+    const habitTime = formatTimeFromSheet(habitTimeRaw);
 
     habits.push({
       name: habitName,
       time: habitTime,
-      checkCell: `Q${4 + i}` // старт флажков
+      checkCell: `Q${4 + i}` 
     });
   }
 
-  // Кнопки
   const buttons = [];
   for (const h of habits) {
     const doneRaw = await getCellValue(h.checkCell);
@@ -211,16 +202,13 @@ async function sendMorningHabits(userId) {
   }
 
   if (buttons.length) {
-    // Редактируем сообщение вместо отправки нового
-    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, ' ', {
+    await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, " ", {
       reply_markup: { inline_keyboard: buttons }
     });
   } else {
-    // Если привычек нет, редактируем с сообщением об отсутствии
     await bot.telegram.editMessageText(userId, loadingMessage.message_id, undefined, "Нет привычек на сегодня.");
   }
 }
-
 
 // --------------------- Команды ---------------------
 bot.start((ctx) => {
@@ -251,9 +239,9 @@ bot.command("today", async (ctx) => {
     await ctx.reply("❌ Ошибка при загрузке планов");
   }
 });
+
 bot.command("habits", async (ctx) => {
   try {
-    await ctx.sendChatAction("typing");
     await sendMorningHabits(ctx.chat.id);
   } catch (err) {
     console.error("Ошибка при отправке привычек:", err);
@@ -279,8 +267,7 @@ bot.on("callback_query", async (ctx) => {
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
     await setCellValue(cell, done ? "FALSE" : "TRUE");
     await ctx.answerCbQuery("Отметка обновлена");
-    // обновим кнопки
-    sendMorningHabits(chatId);
+    await sendMorningHabits(chatId);
   }
 });
 
