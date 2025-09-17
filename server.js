@@ -152,23 +152,21 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 function getHabitsKeyboard(userId) {
   const habits = userHabits[userId] || [];
   const today = new Date().getDate(); // номер дня месяца
-  return {
-    reply_markup: {
-      inline_keyboard: habits.map((h, i) => {
-        // вычисляем колонку с флажком: Q4 = первый день месяца
-        const flagCol = String.fromCharCode(81 + today - 1); // Q=81
-        const flagCell = `${flagCol}${h.row}`;
-        let done = h.done;
-        // синхронизация с Google Sheets
-        getCellValue(flagCell).then(val => {
-          done = val === "TRUE" || val === "1";
-          h.done = done;
-        });
-        const timeText = h.time ? `(${h.time})` : "";
-        return [{ text: `${done ? "✅" : "☑️"} ${h.name} ${timeText}`, callback_data: `habit_toggle_${i}` }];
-      })
-    }
-  };
+  const keyboard = habits.map((h, i) => {
+    const flagCol = String.fromCharCode(81 + today - 1); // Q=81, первый день месяца
+    const flagCell = `${flagCol}${h.row}`;
+    // синхронизация с Google Sheets
+    const donePromise = getCellValue(flagCell).then(val => {
+      h.done = val === "TRUE" || val === "1";
+    });
+    // время для кнопки
+    const timeText = h.time ? `(${h.time})` : "";
+    return [{
+      text: `${h.done ? "✅" : "☑️"} ${h.name} ${timeText}`,
+      callback_data: `habit_toggle_${i}`
+    }];
+  });
+  return { reply_markup: { inline_keyboard: keyboard } };
 }
 
 async function loadHabitsForUser(userId) {
