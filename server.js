@@ -210,7 +210,7 @@ async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const dayOfMonth = now.getDate(); // 1..31
-  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
+  const colMap = ['J','K','L','M','N','O','P']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
@@ -233,6 +233,9 @@ async function sendMorningHabits(userId) {
       }
     }
 
+    // если времени нет — пропускаем привычку
+    if (!habitTime) continue;
+
     // вычисляем ячейку с чекбоксом по дню месяца
     const checkCol = getColumnName(17 + dayOfMonth - 1); // Q=17-я колонка
     const checkCell = `${checkCol}${4 + i}`;
@@ -248,7 +251,7 @@ async function sendMorningHabits(userId) {
   }
 
   const buttons = habits.map(h => [{
-    text: `${h.done ? "✅" : "☑️"} ${h.name}${h.time ? ` (${h.time})` : ""}`,
+    text: `${h.done ? "✅" : "☑️"} ${h.name} (${h.time})`,
     callback_data: `habit_${h.checkCell}`
   }]);
 
@@ -262,6 +265,7 @@ async function sendMorningHabits(userId) {
     console.error("Ошибка при выводе привычек:", err);
   }
 }
+
 
 
 
@@ -328,7 +332,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("18 21 * * *", async () => {
+cron.schedule("10 07 * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -358,7 +362,7 @@ cron.schedule("18 21 * * *", async () => {
 
 
 // Утренние привычки (например, 08:50 МСК)
-cron.schedule("25 21 * * *", async () => {
+cron.schedule("20 07 * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
