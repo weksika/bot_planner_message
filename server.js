@@ -151,23 +151,20 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
   if (!userTodos[chatId]) userTodos[chatId] = tasksArray;
 
   try {
-    if (loadingMessage) {
-      await bot.telegram.editMessageText(
-        chatId,
-        loadingMessage.message_id,
-        undefined,
-        `📅 Планы на ${dateStr}:`,
-        { reply_markup: getTodoKeyboard(chatId).reply_markup }
-      );
-    } else {
-      await bot.telegram.sendMessage(chatId, `📅 Планы на ${dateStr}:`, getTodoKeyboard(chatId));
-    }
-    console.log("✅ Сообщение с планами отправлено пользователю:", chatId);
-  } catch (err) {
-    console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
+  if (loadingMessage) {
+    await bot.telegram.editMessageText(
+      chatId,
+      loadingMessage.message_id,
+      undefined,
+      `📅 Планы на ${dateStr}:`,
+      { reply_markup: getTodoKeyboard(chatId).reply_markup }
+    );
+  } else {
+    await bot.telegram.sendMessage(chatId, `📅 Планы на ${dateStr}:`, getTodoKeyboard(chatId));
   }
-
-  console.log("🏁 sendDailyMessage завершён для:", chatId);
+  console.log("✅ Сообщение с планами отправлено пользователю:", chatId);
+} catch (err) {
+  console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
 }
 
 // --------------------- Привычки ---------------------
