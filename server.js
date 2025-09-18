@@ -186,7 +186,7 @@ async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const dayOfMonth = now.getDate(); // 1..31
-  const colMap = ['J','K','L','M','N','O','P']; // столбцы с временем по дню недели
+  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
