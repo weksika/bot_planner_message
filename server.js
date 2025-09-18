@@ -304,9 +304,14 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("* * * * *", () => {
+cron.schedule("15 20 * * *", () => {
   const curDate = new Date();
-  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+  const dateStr = curDate.toLocaleDateString("ru-RU", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
 
   console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
@@ -325,11 +330,29 @@ cron.schedule("* * * * *", () => {
       console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
     }
   });
-}, { timezone: "Europe/Moscow" });
+});
 
-cron.schedule("50 08 * * *", () => {
-  users.forEach(id => sendMorningHabits(id));
-}, { timezone: "Europe/Moscow" });
+// Утренние привычки (08:50 МСК = 05:50 UTC)
+cron.schedule("16 20 * * *", () => {
+  const curDate = new Date();
+  console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
+  console.log("📋 USERS:", [...users]);
+
+  if (users.size === 0) {
+    console.log("⚠️ Нет пользователей для рассылки");
+    return;
+  }
+
+  users.forEach(async id => {
+    try {
+      console.log(`➡️ Отправляю привычки пользователю ${id}`);
+      await sendMorningHabits(id);
+      console.log(`✅ Успешно отправлено пользователю ${id}`);
+    } catch (err) {
+      console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
+    }
+  });
+});
 
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
