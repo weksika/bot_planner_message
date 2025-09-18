@@ -302,33 +302,30 @@ bot.on("callback_query", async ctx => {
   }
 });
 
-cron.schedule("* * * * *", () => {
-  const now = new Date();
-  console.log("🔥 Тестовый cron сработал:", now.toISOString());
-}, { timezone: "Europe/Moscow" });
+
 // --------------------- Cron ---------------------
-// cron.schedule("50 19 * * *", () => {
-//   const curDate = new Date();
-//   const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+cron.schedule("* * * * *", () => {
+  const curDate = new Date();
+  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
 
-//   console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
-//   console.log("📋 USERS:", [...users]);
+  console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
+  console.log("📋 USERS:", [...users]);
 
-//   if (users.size === 0) {
-//     console.log("⚠️ Нет пользователей для рассылки");
-//     return;
-//   }
+  if (users.size === 0) {
+    console.log("⚠️ Нет пользователей для рассылки");
+    return;
+  }
 
-//   users.forEach(async id => {
-//     try {
-//       console.log(`➡️ Отправляю планы пользователю ${id}`);
-//       await sendDailyMessage(id, null, dateStr);
-//       console.log(`✅ Успешно отправлено пользователю ${id}`);
-//     } catch (err) {
-//       console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
-//     }
-//   });
-// }, { timezone: "Europe/Moscow" });
+  users.forEach(async id => {
+    try {
+      console.log(`➡️ Отправляю планы пользователю ${id}`);
+      await sendDailyMessage(id, null, dateStr);
+      console.log(`✅ Успешно отправлено пользователю ${id}`);
+    } catch (err) {
+      console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
+    }
+  });
+}, { timezone: "Europe/Moscow" });
 
 cron.schedule("50 08 * * *", () => {
   users.forEach(id => sendMorningHabits(id));
