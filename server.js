@@ -166,6 +166,7 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
 } catch (err) {
   console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
 }
+}
 
 // --------------------- Привычки ---------------------
 function formatTimeFromSheet(timeValue) {
@@ -425,5 +426,6 @@ cron.schedule("20 07 * * *", async () => {
     }
   }
 }, { timezone: "Europe/Moscow" });
+
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
