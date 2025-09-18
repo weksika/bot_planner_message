@@ -328,7 +328,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("52 20 * * *", () => {
+cron.schedule("05 21 * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -345,7 +345,7 @@ cron.schedule("52 20 * * *", () => {
     return;
   }
 
-  users.forEach(async id => {
+  for (const id of users) {
     try {
       console.log(`➡️ Отправляю планы пользователю ${id}`);
       await sendDailyMessage(id, null, dateStr);
@@ -353,30 +353,30 @@ cron.schedule("52 20 * * *", () => {
     } catch (err) {
       console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
     }
-  });
-});
+  }
+}, { timezone: "Europe/Moscow" });
 
-// Утренние привычки (08:50 МСК = 05:50 UTC)
-// cron.schedule("50 20 * * *", () => {
-//   const curDate = new Date();
-//   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
-//   console.log("📋 USERS:", [...users]);
 
-//   if (users.size === 0) {
-//     console.log("⚠️ Нет пользователей для рассылки");
-//     return;
-//   }
+// Утренние привычки (например, 08:50 МСК)
+cron.schedule("07 21 * * *", async () => {
+  const curDate = new Date();
+  console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
+  console.log("📋 USERS:", [...users]);
 
-//   users.forEach(async id => {
-//     try {
-//       console.log(`➡️ Отправляю привычки пользователю ${id}`);
-//       await sendMorningHabits(id);
-//       console.log(`✅ Успешно отправлено пользователю ${id}`);
-//     } catch (err) {
-//       console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
-//     }
-//   });
-// });
+  if (users.size === 0) {
+    console.log("⚠️ Нет пользователей для рассылки");
+    return;
+  }
 
+  for (const id of users) {
+    try {
+      console.log(`➡️ Отправляю привычки пользователю ${id}`);
+      await sendMorningHabits(id);
+      console.log(`✅ Успешно отправлено пользователю ${id}`);
+    } catch (err) {
+      console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
+    }
+  }
+}, { timezone: "Europe/Moscow" });
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
