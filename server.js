@@ -278,49 +278,57 @@ bot.command("habits", async ctx => {
 
 // --------------------- Callback ---------------------
 bot.on("callback_query", async ctx => {
-  const chatId = ctx.from.id;
-  const data = ctx.callbackQuery.data;
+  try {
+    await ctx.answerCbQuery("⏳ Обновляю..."); // ответ сразу, в пределах 10 секунд
 
-  if (data.startsWith("toggle_")) {
-    const index = parseInt(data.split("_")[1]);
-    const todo = userTodos[chatId][index];
-    todo.done = !todo.done;
-    await setCellValue(todo.cell, todo.done ? "TRUE" : "FALSE");
-    await ctx.editMessageReplyMarkup(getTodoKeyboard(chatId).reply_markup);
-    await ctx.answerCbQuery();
-  } else if (data.startsWith("habit_")) {
-    const cell = data.split("_")[1];
-    const doneRaw = await getCellValue(cell);
-    const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
-    await setCellValue(cell, done ? "FALSE" : "TRUE");
-    await ctx.answerCbQuery("Отметка обновлена");
-    await sendMorningHabits(chatId);
+    const chatId = ctx.from.id;
+    const data = ctx.callbackQuery.data;
+
+    if (data.startsWith("toggle_")) {
+      const index = parseInt(data.split("_")[1]);
+      const todo = userTodos[chatId][index];
+      todo.done = !todo.done;
+      await setCellValue(todo.cell, todo.done ? "TRUE" : "FALSE");
+      await ctx.editMessageReplyMarkup(getTodoKeyboard(chatId).reply_markup);
+    } else if (data.startsWith("habit_")) {
+      const cell = data.split("_")[1];
+      const doneRaw = await getCellValue(cell);
+      const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
+      await setCellValue(cell, done ? "FALSE" : "TRUE");
+      await sendMorningHabits(chatId);
+    }
+  } catch (err) {
+    console.error("Ошибка при обработке callback_query:", err);
   }
 });
 
-// --------------------- Cron ---------------------
-cron.schedule("50 19 * * *", () => {
-  const curDate = new Date();
-  const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-
-  console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
-  console.log("📋 USERS:", [...users]);
-
-  if (users.size === 0) {
-    console.log("⚠️ Нет пользователей для рассылки");
-    return;
-  }
-
-  users.forEach(async id => {
-    try {
-      console.log(`➡️ Отправляю планы пользователю ${id}`);
-      await sendDailyMessage(id, null, dateStr);
-      console.log(`✅ Успешно отправлено пользователю ${id}`);
-    } catch (err) {
-      console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
-    }
-  });
+cron.schedule("* * * * *", () => {
+  const now = new Date();
+  console.log("🔥 Тестовый cron сработал:", now.toISOString());
 }, { timezone: "Europe/Moscow" });
+// --------------------- Cron ---------------------
+// cron.schedule("50 19 * * *", () => {
+//   const curDate = new Date();
+//   const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+
+//   console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
+//   console.log("📋 USERS:", [...users]);
+
+//   if (users.size === 0) {
+//     console.log("⚠️ Нет пользователей для рассылки");
+//     return;
+//   }
+
+//   users.forEach(async id => {
+//     try {
+//       console.log(`➡️ Отправляю планы пользователю ${id}`);
+//       await sendDailyMessage(id, null, dateStr);
+//       console.log(`✅ Успешно отправлено пользователю ${id}`);
+//     } catch (err) {
+//       console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
+//     }
+//   });
+// }, { timezone: "Europe/Moscow" });
 
 cron.schedule("50 08 * * *", () => {
   users.forEach(id => sendMorningHabits(id));
