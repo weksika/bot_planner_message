@@ -299,7 +299,7 @@ bot.on("callback_query", async ctx => {
 });
 
 // --------------------- Cron ---------------------
-cron.schedule("0 09 * * *", () => {
+cron.schedule("40 19 * * *", () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
   users.forEach(id => sendDailyMessage(id, null, dateStr));
