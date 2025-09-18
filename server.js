@@ -279,12 +279,23 @@ async function sendMorningHabits(userId) {
 // --------------------- Callback ---------------------
 bot.on("callback_query", async ctx => {
   try {
-    await ctx.answerCbQuery("⏳ Обновляю..."); // ответ сразу, в пределах 10 секунд
+    await ctx.answerCbQuery("⏳ Обновляю...");
 
     const chatId = ctx.from.id;
     const data = ctx.callbackQuery.data;
 
-    if (data.startsWith("habit_")) {
+    if (data.startsWith("toggle_")) {
+      // планы
+      const index = parseInt(data.split("_")[1]);
+      const todo = userTodos[chatId][index];
+      todo.done = !todo.done;
+      await setCellValue(todo.cell, todo.done ? "TRUE" : "FALSE");
+
+      // обновляем клавиатуру
+      await ctx.editMessageReplyMarkup(getTodoKeyboard(chatId).reply_markup);
+
+    } else if (data.startsWith("habit_")) {
+      // привычки
       const cell = data.split("_")[1];
       const doneRaw = await getCellValue(cell);
       const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
@@ -293,8 +304,9 @@ bot.on("callback_query", async ctx => {
       // обновляем привычки в том же сообщении
       await sendMorningHabits(chatId);
     }
+
   } catch (err) {
-    console.error("Ошибка при обработке callback_query привычек:", err);
+    console.error("Ошибка при обработке callback_query:", err);
   }
 });
 
