@@ -89,6 +89,7 @@ function func_week_number(date) {
 }
 
 async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
+  console.log("🔍 sendDailyMessage стартовал для:", chatId, "с датой:", dateStr);
   const curDate = new Date();
   const wn = func_week_number(curDate);
   const str = editDate(curDate);
@@ -104,25 +105,45 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
   const numTasks = 8;
 
   for (let i = 1; i <= numTasks; i++) {
-    const taskRow = (2 + (10 * wn)) + i;
-    const taskCell = `${str}${taskRow}`;
-    const checkCell = `${checkCol}${taskRow}`;
+    try {
+      const taskRow = (2 + (10 * wn)) + i;
+      const taskCell = `${str}${taskRow}`;
+      const checkCell = `${checkCol}${taskRow}`;
 
-    const taskText = await getCellValue(taskCell);
-    if (!taskText) continue;
+      console.log(`📌 Получаем задачу из ячейки: ${taskCell}`);
+      const taskText = await getCellValue(taskCell);
+      if (!taskText) {
+        console.log(`⚠️ Пустая ячейка: ${taskCell}`);
+        continue;
+      }
 
-    const taskCheckRaw = await getCellValue(checkCell);
-    const taskDone = taskCheckRaw === true || taskCheckRaw === "TRUE" || taskCheckRaw === "1";
+      const taskCheckRaw = await getCellValue(checkCell);
+      const taskDone = taskCheckRaw === true || taskCheckRaw === "TRUE" || taskCheckRaw === "1";
 
-    userTasks[`task${i}`] = { text: taskText, done: taskDone, cell: checkCell };
+      userTasks[`task${i}`] = { text: taskText, done: taskDone, cell: checkCell };
+      console.log(`✔️ Задача ${i}:`, taskText, "Done:", taskDone);
+    } catch (err) {
+      console.error(`❌ Ошибка при обработке задачи ${i}:`, err.stack || err);
+    }
   }
 
   const tasksArray = Object.values(userTasks);
 
   if (tasksArray.length === 0) {
+    console.log("⚠️ Нет задач для отправки");
     if (loadingMessage) {
-      await bot.telegram.editMessageText(chatId, loadingMessage.message_id, undefined, `📅 Планы на ${dateStr} отсутствуют.`);
+      try {
+        await bot.telegram.editMessageText(
+          chatId,
+          loadingMessage.message_id,
+          undefined,
+          `📅 Планы на ${dateStr} отсутствуют.`
+        );
+      } catch (err) {
+        console.error("❌ Ошибка при отправке сообщения о пустых планах:", err.stack || err);
+      }
     }
+    console.log("🏁 sendDailyMessage завершён для:", chatId);
     return;
   }
 
@@ -140,9 +161,12 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
     } else {
       await bot.telegram.sendMessage(chatId, `📅 Планы на ${dateStr}:`, getTodoKeyboard(chatId));
     }
+    console.log("✅ Сообщение с планами отправлено пользователю:", chatId);
   } catch (err) {
-    console.error("Ошибка при отправке сообщения:", err);
+    console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
   }
+
+  console.log("🏁 sendDailyMessage завершён для:", chatId);
 }
 
 // --------------------- Привычки ---------------------
