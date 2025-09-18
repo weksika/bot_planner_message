@@ -207,19 +207,20 @@ function getColumnName(colNumber) {
   return name;
 }
 
-async function sendMorningHabits(userId, loadingMessage = null) {
+async function sendMorningHabits(userId) {
   const now = new Date();
-  const weekday = now.getDay();
-  const dayOfMonth = now.getDate();
-  const colMap = ['P','J','K','L','M','N','O'];
+  const weekday = now.getDay(); // 0 = вс, 1 = пн ...
+  const dayOfMonth = now.getDate(); // 1..31
+  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
-    const habitCell = `C${4 + i}`;
-    const timeCell = `${colMap[weekday]}${4 + i}`;
+    const habitCell = `C${4 + i}`; // название привычки
+    const timeCell = `${colMap[weekday]}${4 + i}`; // время привычки
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
 
+    // формируем корректное время
     let habitTime = "";
     if (habitTimeRaw != null && habitTimeRaw !== "") {
       if (typeof habitTimeRaw === "number") {
@@ -233,14 +234,20 @@ async function sendMorningHabits(userId, loadingMessage = null) {
       }
     }
 
-    if (!habitTime) continue; // пропускаем привычку без времени
+    // если времени нет — пропускаем привычку
+    if (!habitTime) continue;
 
-    const checkCol = getColumnName(17 + dayOfMonth - 1);
+    const checkCol = getColumnName(17 + dayOfMonth - 1); // Q=17-я колонка
     const checkCell = `${checkCol}${4 + i}`;
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
 
-    habits.push({ name: habitName, time: habitTime, checkCell, done });
+    habits.push({
+      name: habitName,
+      time: habitTime,
+      checkCell,
+      done
+    });
   }
 
   const buttons = habits.map(h => [{
@@ -252,7 +259,7 @@ async function sendMorningHabits(userId, loadingMessage = null) {
 
   try {
     if (userHabitMessages[userId]) {
-      // редактируем старое сообщение
+      // редактируем существующее сообщение
       await bot.telegram.editMessageText(
         userId,
         userHabitMessages[userId],
@@ -261,17 +268,38 @@ async function sendMorningHabits(userId, loadingMessage = null) {
         { reply_markup: { inline_keyboard: buttons } }
       );
     } else {
-      // отправляем новое сообщение
+      // отправляем новое сообщение и сохраняем message_id
       const msg = await bot.telegram.sendMessage(userId, textToSend, {
         reply_markup: { inline_keyboard: buttons }
       });
-      userHabitMessages[userId] = msg.message_id; // сохраняем ID
+      userHabitMessages[userId] = msg.message_id;
     }
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
 }
 
+// --------------------- Callback ---------------------
+bot.on("callback_query", async ctx => {
+  try {
+    await ctx.answerCbQuery("⏳ Обновляю..."); // ответ сразу, в пределах 10 секунд
+
+    const chatId = ctx.from.id;
+    const data = ctx.callbackQuery.data;
+
+    if (data.startsWith("habit_")) {
+      const cell = data.split("_")[1];
+      const doneRaw = await getCellValue(cell);
+      const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
+      await setCellValue(cell, done ? "FALSE" : "TRUE");
+
+      // обновляем привычки в том же сообщении
+      await sendMorningHabits(chatId);
+    }
+  } catch (err) {
+    console.error("Ошибка при обработке callback_query привычек:", err);
+  }
+});
 
 
 
