@@ -210,7 +210,7 @@ async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const dayOfMonth = now.getDate(); // 1..31
-  const colMap = ['J','K','L','M','N','O','P']; // столбцы с временем по дню недели
+  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
@@ -230,7 +230,7 @@ async function sendMorningHabits(userId) {
       } else {
         const match = habitTimeRaw.toString().match(/(\d{1,2}):(\d{1,2})/);
         if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
-      }
+      } 
     }
 
     // если времени нет — пропускаем привычку
