@@ -19,6 +19,7 @@ function loadUsers() {
 }
 
 const userTodos = {};
+const userHabitMessages = {};
 loadUsers();
 console.log("Загружены пользователи:", [...users]);
 
@@ -206,20 +207,19 @@ function getColumnName(colNumber) {
   return name;
 }
 
-async function sendMorningHabits(userId) {
+async function sendMorningHabits(userId, loadingMessage = null) {
   const now = new Date();
-  const weekday = now.getDay(); // 0 = вс, 1 = пн ...
-  const dayOfMonth = now.getDate(); // 1..31
-  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
+  const weekday = now.getDay();
+  const dayOfMonth = now.getDate();
+  const colMap = ['P','J','K','L','M','N','O'];
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
-    const habitCell = `C${4 + i}`; // название привычки
-    const timeCell = `${colMap[weekday]}${4 + i}`; // время привычки
+    const habitCell = `C${4 + i}`;
+    const timeCell = `${colMap[weekday]}${4 + i}`;
     const habitName = await getCellValue(habitCell) || `Привычка ${i+1}`;
     const habitTimeRaw = await getCellValue(timeCell);
 
-    // формируем корректное время
     let habitTime = "";
     if (habitTimeRaw != null && habitTimeRaw !== "") {
       if (typeof habitTimeRaw === "number") {
@@ -230,24 +230,17 @@ async function sendMorningHabits(userId) {
       } else {
         const match = habitTimeRaw.toString().match(/(\d{1,2}):(\d{1,2})/);
         if (match) habitTime = `${match[1].padStart(2,'0')}:${match[2].padStart(2,'0')}`;
-      } 
+      }
     }
 
-    // если времени нет — пропускаем привычку
-    if (!habitTime) continue;
+    if (!habitTime) continue; // пропускаем привычку без времени
 
-    // вычисляем ячейку с чекбоксом по дню месяца
-    const checkCol = getColumnName(17 + dayOfMonth - 1); // Q=17-я колонка
+    const checkCol = getColumnName(17 + dayOfMonth - 1);
     const checkCell = `${checkCol}${4 + i}`;
     const doneRaw = await getCellValue(checkCell);
     const done = doneRaw === true || doneRaw === "TRUE" || doneRaw === "1";
 
-    habits.push({
-      name: habitName,
-      time: habitTime,
-      checkCell,
-      done
-    });
+    habits.push({ name: habitName, time: habitTime, checkCell, done });
   }
 
   const buttons = habits.map(h => [{
@@ -258,9 +251,22 @@ async function sendMorningHabits(userId) {
   const textToSend = buttons.length ? "🌞 Утренние привычки:" : "Нет привычек на сегодня.";
 
   try {
-    await bot.telegram.sendMessage(userId, textToSend, {
-      reply_markup: { inline_keyboard: buttons }
-    });
+    if (userHabitMessages[userId]) {
+      // редактируем старое сообщение
+      await bot.telegram.editMessageText(
+        userId,
+        userHabitMessages[userId],
+        undefined,
+        textToSend,
+        { reply_markup: { inline_keyboard: buttons } }
+      );
+    } else {
+      // отправляем новое сообщение
+      const msg = await bot.telegram.sendMessage(userId, textToSend, {
+        reply_markup: { inline_keyboard: buttons }
+      });
+      userHabitMessages[userId] = msg.message_id; // сохраняем ID
+    }
   } catch (err) {
     console.error("Ошибка при выводе привычек:", err);
   }
