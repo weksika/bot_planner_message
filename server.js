@@ -21,12 +21,12 @@ function saveUsers() {
 function loadUsers() {
   try {
     if (fs.existsSync(USERS_FILE)) {
-      const data = JSON.parse(fs.readFileSync("users.json", "utf8"));
+      const data = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
       data.forEach((id) => users.add(id));
       console.log("✅ Загружены пользователи:", [...users]);
     } else {
       console.log("⚠️ Файл users.json не найден, создаём новый...");
-      fs.writeFileSync("users.json", "[]");
+      fs.writeFileSync(USERS_FILE, "[]");
     }
   } catch (err) {
     console.error("❌ Ошибка при загрузке users.json:", err);
