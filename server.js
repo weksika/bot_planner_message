@@ -3,13 +3,15 @@ import "dotenv/config";
 import { Telegraf } from "telegraf";
 import fetch from "node-fetch";
 import cron from "node-cron";
+import path from "path";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
+const USERS_FILE = path.resolve("./bot_planner_message/users.json");
 
 function saveUsers() {
   try {
-    fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
+    fs.writeFileSync(USERS_FILE, JSON.stringify([...users], null, 2));
     console.log("💾 Пользователи сохранены:", [...users]);
   } catch (err) {
     console.error("❌ Ошибка при сохранении users.json:", err);
@@ -18,7 +20,7 @@ function saveUsers() {
 
 function loadUsers() {
   try {
-    if (fs.existsSync("users.json")) {
+    if (fs.existsSync(USERS_FILE)) {
       const data = JSON.parse(fs.readFileSync("users.json", "utf8"));
       data.forEach((id) => users.add(id));
       console.log("✅ Загружены пользователи:", [...users]);
