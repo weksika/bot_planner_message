@@ -7,7 +7,7 @@ import path from "path";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
-const USERS_FILE = path.resolve("./bot_planner_message/users.json");
+const USERS_FILE = path.resolve("/root/bot_planner_message/users.json");
 
 function saveUsers() {
   try {
