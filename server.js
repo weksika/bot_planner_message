@@ -8,13 +8,26 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
 
 function saveUsers() {
-  fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
+  try {
+    fs.writeFileSync("users.json", JSON.stringify([...users], null, 2));
+    console.log("💾 Пользователи сохранены:", [...users]);
+  } catch (err) {
+    console.error("❌ Ошибка при сохранении users.json:", err);
+  }
 }
 
 function loadUsers() {
-  if (fs.existsSync("users.json")) {
-    const data = JSON.parse(fs.readFileSync("users.json"));
-    data.forEach(id => users.add(id));
+  try {
+    if (fs.existsSync("users.json")) {
+      const data = JSON.parse(fs.readFileSync("users.json", "utf8"));
+      data.forEach((id) => users.add(id));
+      console.log("✅ Загружены пользователи:", [...users]);
+    } else {
+      console.log("⚠️ Файл users.json не найден, создаём новый...");
+      fs.writeFileSync("users.json", "[]");
+    }
+  } catch (err) {
+    console.error("❌ Ошибка при загрузке users.json:", err);
   }
 }
 
@@ -314,10 +327,14 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Команды ---------------------
-bot.start(ctx => {
-  users.add(ctx.from.id);
-  saveUsers();
-  ctx.reply("✅ Ты подписан на ежедневные уведомления!");
+bot.start((ctx) => {
+  const id = ctx.from.id;
+  if (!users.has(id)) {
+    users.add(id);
+    saveUsers();
+    console.log("👤 Добавлен новый пользователь:", id);
+  }
+  ctx.reply("Привет! Ты подписан на ежедневные уведомления 🌞");
 });
 
 bot.command("id", ctx => {
@@ -376,7 +393,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("23 23 * * *", async () => {
+cron.schedule("*/3 * * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -406,7 +423,7 @@ cron.schedule("23 23 * * *", async () => {
 
 
 // Утренние привычки (например, 08:50 МСК)
-cron.schedule("33 23 * * *", async () => {
+cron.schedule("*/2 * * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
