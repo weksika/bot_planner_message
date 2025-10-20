@@ -340,6 +340,7 @@ bot.start((ctx) => {
 bot.command("id", ctx => {
   ctx.reply(`Твой Telegram ID: ${ctx.from.id}`);
   users.add(ctx.from.id);
+  saveUsers();
 });
 
 bot.command("today", async ctx => {
@@ -393,7 +394,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("*/3 * * * *", async () => {
+cron.schedule("0 07 * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -423,7 +424,7 @@ cron.schedule("*/3 * * * *", async () => {
 
 
 // Утренние привычки (например, 08:50 МСК)
-cron.schedule("*/2 * * * *", async () => {
+cron.schedule("15 07 * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
