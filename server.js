@@ -9,6 +9,16 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const users = new Set();
 const USERS_FILE = path.resolve("/root/bot_planner_message/users.json");
 
+
+const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+console.log(`🚀 Бот запущен в ${now}`);
+
+// Дополнительно можно записывать это в отдельный файл (по желанию)
+fs.appendFileSync(
+  path.join(process.cwd(), 'restart.log'),
+  `Бот запущен: ${now}\n`
+);
+
 function saveUsers() {
   try {
     fs.writeFileSync(USERS_FILE, JSON.stringify([...users], null, 2));
@@ -396,7 +406,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("00 07 * * *", async () => {
+cron.schedule("55 21 * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -426,7 +436,7 @@ cron.schedule("00 07 * * *", async () => {
 
 
 // Утренние привычки (например, 08:50 МСК)
-cron.schedule("15 07 * * *", async () => {
+cron.schedule("05 22 * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
