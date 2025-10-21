@@ -1,6 +1,8 @@
 import fs from "fs";
 import "dotenv/config";
-import { Telegraf } from "telegraf";
+import {
+  Telegraf
+} from "telegraf";
 import fetch from "node-fetch";
 import cron from "node-cron";
 import path from "path";
@@ -10,7 +12,9 @@ const users = new Set();
 const USERS_FILE = path.resolve("/root/bot_planner_message/users.json");
 
 
-const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' });
+const now = new Date().toLocaleString('ru-RU', {
+  timeZone: 'Europe/Moscow'
+});
 console.log(`🚀 Бот запущен в ${now}`);
 
 // Дополнительно можно записывать это в отдельный файл (по желанию)
@@ -78,9 +82,10 @@ function getTodoKeyboard(userId) {
   const todos = userTodos[userId] || [];
   return {
     reply_markup: {
-      inline_keyboard: todos.map((t, i) => [
-        { text: `${t.done ? "✅" : "☑️"} ${t.text}`, callback_data: `toggle_${i}` },
-      ]),
+      inline_keyboard: todos.map((t, i) => [{
+        text: `${t.done ? "✅" : "☑️"} ${t.text}`,
+        callback_data: `toggle_${i}`
+      }, ]),
     },
   };
 }
@@ -88,14 +93,22 @@ function getTodoKeyboard(userId) {
 function editDate(date) {
   const weekday = date.getDay();
   switch (weekday) {
-    case 1: return 'D';
-    case 2: return 'J';
-    case 3: return 'P';
-    case 4: return 'V';
-    case 5: return 'AB';
-    case 6: return 'AH';
-    case 0: return 'AN';
-    default: return 'D';
+    case 1:
+      return 'D';
+    case 2:
+      return 'J';
+    case 3:
+      return 'P';
+    case 4:
+      return 'V';
+    case 5:
+      return 'AB';
+    case 6:
+      return 'AH';
+    case 0:
+      return 'AN';
+    default:
+      return 'D';
   }
 }
 
@@ -146,7 +159,11 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
       const taskCheckRaw = await getCellValue(checkCell);
       const taskDone = taskCheckRaw === true || taskCheckRaw === "TRUE" || taskCheckRaw === "1";
 
-      userTasks[`task${i}`] = { text: taskText, done: taskDone, cell: checkCell };
+      userTasks[`task${i}`] = {
+        text: taskText,
+        done: taskDone,
+        cell: checkCell
+      };
       console.log(`✔️ Задача ${i}:`, taskText, "Done:", taskDone);
     } catch (err) {
       console.error(`❌ Ошибка при обработке задачи ${i}:`, err.stack || err);
@@ -176,21 +193,22 @@ async function sendDailyMessage(chatId, loadingMessage = null, dateStr = null) {
   if (!userTodos[chatId]) userTodos[chatId] = tasksArray;
 
   try {
-  if (loadingMessage) {
-    await bot.telegram.editMessageText(
-      chatId,
-      loadingMessage.message_id,
-      undefined,
-      `📅 Планы на ${dateStr}:`,
-      { reply_markup: getTodoKeyboard(chatId).reply_markup }
-    );
-  } else {
-    await bot.telegram.sendMessage(chatId, `📅 Планы на ${dateStr}:`, getTodoKeyboard(chatId));
+    if (loadingMessage) {
+      await bot.telegram.editMessageText(
+        chatId,
+        loadingMessage.message_id,
+        undefined,
+        `📅 Планы на ${dateStr}:`, {
+          reply_markup: getTodoKeyboard(chatId).reply_markup
+        }
+      );
+    } else {
+      await bot.telegram.sendMessage(chatId, `📅 Планы на ${dateStr}:`, getTodoKeyboard(chatId));
+    }
+    console.log("✅ Сообщение с планами отправлено пользователю:", chatId);
+  } catch (err) {
+    console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
   }
-  console.log("✅ Сообщение с планами отправлено пользователю:", chatId);
-} catch (err) {
-  console.error(`❌ Ошибка при отправке сообщения пользователю ${chatId}:`, err.stack || err);
-}
 }
 
 // --------------------- Привычки ---------------------
@@ -234,7 +252,7 @@ async function sendMorningHabits(userId) {
   const now = new Date();
   const weekday = now.getDay(); // 0 = вс, 1 = пн ...
   const dayOfMonth = now.getDate(); // 1..31
-  const colMap = ['P','J','K','L','M','N','O']; // столбцы с временем по дню недели
+  const colMap = ['P', 'J', 'K', 'L', 'M', 'N', 'O']; // столбцы с временем по дню недели
   const habits = [];
 
   for (let i = 0; i < 5; i++) {
@@ -287,13 +305,18 @@ async function sendMorningHabits(userId) {
         userId,
         userHabitMessages[userId],
         undefined,
-        textToSend,
-        { reply_markup: { inline_keyboard: buttons } }
+        textToSend, {
+          reply_markup: {
+            inline_keyboard: buttons
+          }
+        }
       );
     } else {
       // отправляем новое сообщение и сохраняем message_id
       const msg = await bot.telegram.sendMessage(userId, textToSend, {
-        reply_markup: { inline_keyboard: buttons }
+        reply_markup: {
+          inline_keyboard: buttons
+        }
       });
       userHabitMessages[userId] = msg.message_id;
     }
@@ -360,7 +383,12 @@ bot.command("today", async ctx => {
     await ctx.sendChatAction("typing");
     const loadingMessage = await ctx.reply("⏳ Загружаю планы...");
     const curDate = new Date();
-    const dateStr = curDate.toLocaleDateString("ru-RU", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+    const dateStr = curDate.toLocaleDateString("ru-RU", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
     await sendDailyMessage(ctx.chat.id, loadingMessage, dateStr);
   } catch (err) {
     console.error(err);
@@ -406,55 +434,52 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("40 22 * * *", async () => {
-  const curDate = new Date();
-  const dateStr = curDate.toLocaleDateString("ru-RU", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  });
+cron.schedule("56 22 * * *", async () => {
+  try {
+    const curDate = new Date();
+    const dateStr = curDate.toLocaleDateString("ru-RU", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+    
+    console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
 
-  console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
-  console.log("📋 USERS:", [...users]);
+    if (users.size === 0) return;
 
-  if (users.size === 0) {
-    console.log("⚠️ Нет пользователей для рассылки");
-    return;
+    await Promise.all([...users].map(async (id) => {
+      try {
+        await sendDailyMessage(id, null, dateStr);
+      } catch (err) {
+        console.error("Ошибка при sendDailyMessage:", err);
+      }
+    }));
+
+  } catch (err) {
+    console.error("Ошибка в CRON daily plans:", err);
   }
-
-  // Используем Promise.all, чтобы отправлять параллельно
-  await Promise.all([...users].map(async (id) => {
-    try {
-      console.log(`➡️ Отправляю планы пользователю ${id}`);
-      await sendDailyMessage(id, null, dateStr);
-      console.log(`✅ Успешно отправлено пользователю ${id}`);
-    } catch (err) {
-      console.error(`❌ Ошибка при отправке планов пользователю ${id}:`, err);
-    }
-  }));
 }, { timezone: "Europe/Moscow" });
 
-// --------------------- CRON: Утренние привычки ---------------------
-cron.schedule("47 22 * * *", async () => {
+cron.schedule("05 23 * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
-
   if (users.size === 0) {
     console.log("⚠️ Нет пользователей для рассылки");
     return;
   }
-
-  await Promise.all([...users].map(async (id) => {
+  for (const id of users) {
     try {
-      console.log(`➡️ Отправляю привычки пользователю ${id}`);
+      console.log(`➡️Отправляю привычки пользователю ${id}`);
       await sendMorningHabits(id);
-      console.log(`✅ Успешно отправлено пользователю ${id}`);
+      console.log(`✅Успешно отправлено пользователю ${id}`);
     } catch (err) {
-      console.error(`❌ Ошибка при отправке привычек пользователю ${id}:`, err);
+      console.error(`❌Ошибка при отправке пользователю ${id}: , err`);
     }
-  }));
-}, { timezone: "Europe/Moscow" });
+  }
+}, {
+  timezone: "Europe/Moscow"
+});
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
