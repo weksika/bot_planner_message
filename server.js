@@ -406,7 +406,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("55 21 * * *", async () => {
+cron.schedule("05 22 * * *", async () => {
   const curDate = new Date();
   const dateStr = curDate.toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -436,7 +436,7 @@ cron.schedule("55 21 * * *", async () => {
 
 
 // Утренние привычки (например, 08:50 МСК)
-cron.schedule("05 22 * * *", async () => {
+cron.schedule("15 22 * * *", async () => {
   const curDate = new Date();
   console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
   console.log("📋 USERS:", [...users]);
