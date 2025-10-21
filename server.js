@@ -411,7 +411,7 @@ bot.launch().then(() => {
 
   // --------------------- Cron ---------------------
   // Ежедневные планы (например, 05:00 МСК)
-  cron.schedule("30 22 * * *", async () => {
+  cron.schedule("33 22 * * *", async () => {
     const curDate = new Date();
     const dateStr = curDate.toLocaleDateString("ru-RU", {
       weekday: "long",
@@ -440,7 +440,7 @@ bot.launch().then(() => {
   }, { timezone: "Europe/Moscow" });
 
   // Утренние привычки (например, 08:50 МСК)
-  cron.schedule("40 22 * * *", async () => {
+  cron.schedule("43 22 * * *", async () => {
     const curDate = new Date();
     console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
     console.log("📋 USERS:", [...users]);
