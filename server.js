@@ -406,60 +406,55 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-bot.launch().then(() => {
-  console.log("🤖 Бот запущен!");
+cron.schedule("40 22 * * *", async () => {
+  const curDate = new Date();
+  const dateStr = curDate.toLocaleDateString("ru-RU", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
 
-  // --------------------- Cron ---------------------
-  // Ежедневные планы (например, 05:00 МСК)
-  cron.schedule("33 22 * * *", async () => {
-    const curDate = new Date();
-    const dateStr = curDate.toLocaleDateString("ru-RU", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    });
+  console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
+  console.log("📋 USERS:", [...users]);
 
-    console.log("🕒 CRON (daily plans) triggered at:", curDate.toISOString());
-    console.log("📋 USERS:", [...users]);
+  if (users.size === 0) {
+    console.log("⚠️ Нет пользователей для рассылки");
+    return;
+  }
 
-    if (users.size === 0) {
-      console.log("⚠️ Нет пользователей для рассылки");
-      return;
+  // Используем Promise.all, чтобы отправлять параллельно
+  await Promise.all([...users].map(async (id) => {
+    try {
+      console.log(`➡️ Отправляю планы пользователю ${id}`);
+      await sendDailyMessage(id, null, dateStr);
+      console.log(`✅ Успешно отправлено пользователю ${id}`);
+    } catch (err) {
+      console.error(`❌ Ошибка при отправке планов пользователю ${id}:`, err);
     }
+  }));
+}, { timezone: "Europe/Moscow" });
 
-    for (const id of users) {
-      try {
-        console.log(`➡️ Отправляю планы пользователю ${id}`);
-        await sendDailyMessage(id, null, dateStr);
-        console.log(`✅ Успешно отправлено пользователю ${id}`);
-      } catch (err) {
-        console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
-      }
+// --------------------- CRON: Утренние привычки ---------------------
+cron.schedule("47 22 * * *", async () => {
+  const curDate = new Date();
+  console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
+  console.log("📋 USERS:", [...users]);
+
+  if (users.size === 0) {
+    console.log("⚠️ Нет пользователей для рассылки");
+    return;
+  }
+
+  await Promise.all([...users].map(async (id) => {
+    try {
+      console.log(`➡️ Отправляю привычки пользователю ${id}`);
+      await sendMorningHabits(id);
+      console.log(`✅ Успешно отправлено пользователю ${id}`);
+    } catch (err) {
+      console.error(`❌ Ошибка при отправке привычек пользователю ${id}:`, err);
     }
-  }, { timezone: "Europe/Moscow" });
-
-  // Утренние привычки (например, 08:50 МСК)
-  cron.schedule("43 22 * * *", async () => {
-    const curDate = new Date();
-    console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
-    console.log("📋 USERS:", [...users]);
-
-    if (users.size === 0) {
-      console.log("⚠️ Нет пользователей для рассылки");
-      return;
-    }
-
-    for (const id of users) {
-      try {
-        console.log(`➡️ Отправляю привычки пользователю ${id}`);
-        await sendMorningHabits(id);
-        console.log(`✅ Успешно отправлено пользователю ${id}`);
-      } catch (err) {
-        console.error(`❌ Ошибка при отправке пользователю ${id}:`, err);
-      }
-    }
-  }, { timezone: "Europe/Moscow" });
-});
+  }));
+}, { timezone: "Europe/Moscow" });
 // --------------------- Запуск ---------------------
 bot.launch().then(() => console.log("🤖 Бот запущен!"));
