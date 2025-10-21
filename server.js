@@ -441,7 +441,7 @@ bot.on("callback_query", async ctx => {
 
 
 // --------------------- Cron ---------------------
-cron.schedule("17 23 * * *", async () => {
+cron.schedule("0 7 * * *", async () => {
   try {
     const curDate = new Date();
     const dateStr = curDate.toLocaleDateString("ru-RU", {
@@ -472,7 +472,7 @@ cron.schedule("17 23 * * *", async () => {
   }
 }, { timezone: "Europe/Moscow" });
 
-cron.schedule("27 23 * * *", async () => {
+cron.schedule("10 7 * * *", async () => {
   try {
     const curDate = new Date();
     console.log("🕒 CRON (morning habits) triggered at:", curDate.toISOString());
